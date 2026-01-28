@@ -60,72 +60,72 @@
     - 实现文件临时存储
     - _Requirements: 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 5. 转写服务集成
+- [x] 5. 转写服务集成
   - [x] 5.1 实现 TranscriptionService 转写服务
     - 实现 `transcribe()` 方法调用 Whisper API
     - 实现 `check_health()` 健康检查方法
     - 使用 OpenAI 兼容的 `/v1/audio/transcriptions` 接口
     - _Requirements: 2.1, 2.2, 2.4, 2.5_
   
-  - [ ] 5.2 实现健康检查 API 端点
+  - [x] 5.2 实现健康检查 API 端点
     - 实现 `GET /api/health` 端点
     - 返回系统和 Whisper 服务状态
     - _Requirements: 8.1, 8.2, 8.3_
   
-  - [ ] 5.3 编写转写服务单元测试
+  - [x] 5.3 编写转写服务单元测试
     - 测试 API 调用格式
     - 测试错误处理
     - _Requirements: 2.1, 2.2, 2.4_
 
-- [ ] 6. 检查点 - 转写功能验证
+- [x] 6. 检查点 - 转写功能验证
   - 确保所有测试通过，如有问题请询问用户
 
-- [ ] 7. 总结服务实现
-  - [ ] 7.1 实现 SummaryService 总结服务
+- [x] 7. 总结服务实现
+  - [x] 7.1 实现 SummaryService 总结服务
     - 实现 `generate_summary()` 方法调用 Claude CLI
     - 实现 `update_summary()` 方法处理修改请求
     - 实现总结 prompt 模板
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
   
-  - [ ] 7.2 实现总结版本管理
+  - [x] 7.2 实现总结版本管理
     - 实现版本号递增逻辑
     - 实现历史版本保存
     - 实现状态变更（draft -> final）
     - _Requirements: 6.1, 6.3, 6.5, 6.7_
   
-  - [ ] 7.3 编写总结服务属性测试
+  - [x] 7.3 编写总结服务属性测试
     - **Property 2: Markdown 格式输出与导出**
     - **Property 7: 版本管理正确性**
     - **Property 8: 确认后状态变更**
     - **Validates: Requirements 3.5, 4.3, 6.3, 6.5, 6.7**
 
-- [ ] 8. 对话服务实现
-  - [ ] 8.1 实现 ChatService 对话服务
+- [x] 8. 对话服务实现
+  - [x] 8.1 实现 ChatService 对话服务
     - 实现 `chat()` 方法处理用户问答
     - 实现对话上下文构建（包含转写文本、总结、历史）
     - _Requirements: 5.1, 5.2, 5.3, 5.6, 5.7_
   
-  - [ ] 8.2 实现对话 API 端点
+  - [x] 8.2 实现对话 API 端点
     - 实现 `POST /api/chat` 端点
     - 支持 question 和 edit_request 两种消息类型
     - _Requirements: 5.2, 5.3, 6.2, 6.3, 6.4_
   
-  - [ ] 8.3 编写对话服务属性测试
+  - [x] 8.3 编写对话服务属性测试
     - **Property 3: 对话上下文完整性**
     - **Validates: Requirements 5.2**
 
-- [ ] 9. 确认生成与导出功能
-  - [ ] 9.1 实现确认生成 API 端点
+- [x] 9. 确认生成与导出功能
+  - [x] 9.1 实现确认生成 API 端点
     - 实现 `POST /api/finalize` 端点
     - 实现状态变更为 final
     - _Requirements: 6.5, 6.6_
   
-  - [ ] 9.2 实现下载 API 端点
+  - [x] 9.2 实现下载 API 端点
     - 实现 `GET /api/download/{session_id}` 端点
     - 返回 Markdown 文件下载
     - _Requirements: 4.3_
 
-- [ ] 10. 检查点 - 后端功能验证
+- [x] 10. 检查点 - 后端功能验证
   - 确保所有测试通过，如有问题请询问用户
 
 - [ ] 11. 前端界面实现

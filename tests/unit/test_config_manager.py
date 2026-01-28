@@ -47,7 +47,7 @@ class TestConfigManagerDefaultValues:
     def test_default_claude_command(self):
         """测试默认 Claude 命令"""
         config = ConfigManager("nonexistent.yaml")
-        assert config.get_claude_command() == ["claude"]
+        assert config.get_claude_command() == "claude"
     
     def test_default_whisper_timeout(self):
         """测试默认 Whisper 超时时间"""
@@ -91,7 +91,7 @@ class TestConfigManagerLoadFromFile:
         
         assert config.get_whisper_url() == "http://custom-whisper:9000"
         assert config.get_whisper_timeout() == 600
-        assert config.get_claude_command() == ["custom-claude", "--verbose"]
+        assert config.get_claude_command() == "custom-claude --verbose"
     
     def test_load_partial_config(self, tmp_path):
         """测试加载部分配置（其他使用默认值）"""
@@ -109,7 +109,7 @@ class TestConfigManagerLoadFromFile:
         assert config.get_whisper_url() == "http://partial-whisper:8000"
         # 默认值
         assert config.get_whisper_timeout() == 300
-        assert config.get_claude_command() == ["claude"]
+        assert config.get_claude_command() == "claude"
     
     def test_load_empty_config_file(self, tmp_path):
         """测试加载空配置文件"""
@@ -120,7 +120,7 @@ class TestConfigManagerLoadFromFile:
         
         # 应该使用默认值
         assert config.get_whisper_url() == "http://localhost:8765"
-        assert config.get_claude_command() == ["claude"]
+        assert config.get_claude_command() == "claude"
     
     def test_load_invalid_yaml(self, tmp_path):
         """测试加载无效的 YAML 文件"""
@@ -131,7 +131,7 @@ class TestConfigManagerLoadFromFile:
         
         # 应该使用默认值
         assert config.get_whisper_url() == "http://localhost:8765"
-        assert config.get_claude_command() == ["claude"]
+        assert config.get_claude_command() == "claude"
     
     def test_load_non_dict_yaml(self, tmp_path):
         """测试加载非字典格式的 YAML"""
@@ -159,9 +159,7 @@ class TestConfigManagerClaudeCommand:
         
         config = ConfigManager(str(config_file))
         
-        assert config.get_claude_command() == [
-            "claude", "--url", "http://api.example.com", "--verbose"
-        ]
+        assert config.get_claude_command() == "claude --url http://api.example.com --verbose"
     
     def test_claude_command_list(self, tmp_path):
         """测试列表格式的 Claude 命令"""
@@ -175,9 +173,7 @@ class TestConfigManagerClaudeCommand:
         
         config = ConfigManager(str(config_file))
         
-        assert config.get_claude_command() == [
-            "claude", "--url", "http://api.example.com"
-        ]
+        assert config.get_claude_command() == "claude --url http://api.example.com"
     
     def test_claude_command_simple(self, tmp_path):
         """测试简单的 Claude 命令"""
@@ -191,7 +187,7 @@ class TestConfigManagerClaudeCommand:
         
         config = ConfigManager(str(config_file))
         
-        assert config.get_claude_command() == ["claude"]
+        assert config.get_claude_command() == "claude"
 
 
 class TestConfigManagerReload:

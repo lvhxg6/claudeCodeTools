@@ -249,10 +249,9 @@ class TestProperty9ConfigLoadingCorrectness:
             config = ConfigManager(config_path)
             loaded_command = config.get_claude_command()
             
-            # Assert: 加载的命令应正确解析为列表
-            expected_command = claude_command.split()
-            assert loaded_command == expected_command, \
-                f"Expected command {expected_command}, but got {loaded_command}"
+            # Assert: 加载的命令应与配置文件中的一致（字符串形式）
+            assert loaded_command == claude_command, \
+                f"Expected command '{claude_command}', but got '{loaded_command}'"
         finally:
             if config_path:
                 cleanup_temp_file(config_path)
@@ -284,10 +283,11 @@ class TestProperty9ConfigLoadingCorrectness:
             # Assert: 验证 Claude 命令
             if "claude" in config_data and "command" in config_data["claude"]:
                 expected_cmd = config_data["claude"]["command"]
-                if isinstance(expected_cmd, str):
-                    expected_cmd = expected_cmd.split()
+                # 如果是列表，合并为字符串
+                if isinstance(expected_cmd, list):
+                    expected_cmd = " ".join(expected_cmd)
                 assert config.get_claude_command() == expected_cmd, \
-                    f"Claude command mismatch: expected {expected_cmd}, got {config.get_claude_command()}"
+                    f"Claude command mismatch: expected '{expected_cmd}', got '{config.get_claude_command()}'"
         finally:
             if config_path:
                 cleanup_temp_file(config_path)
@@ -323,7 +323,7 @@ class TestProperty9ConfigLoadingCorrectness:
             
             # Assert: 两个配置值应独立正确
             assert config.get_whisper_url() == whisper_url
-            assert config.get_claude_command() == claude_command.split()
+            assert config.get_claude_command() == claude_command
         finally:
             if config_path:
                 cleanup_temp_file(config_path)
@@ -346,7 +346,7 @@ class TestProperty10DefaultConfigFallback:
     
     # 默认值常量
     DEFAULT_WHISPER_URL = "http://localhost:8765"
-    DEFAULT_CLAUDE_COMMAND = ["claude"]
+    DEFAULT_CLAUDE_COMMAND = "claude"
     
     @settings(max_examples=100)
     @given(nonexistent_path=st.text(

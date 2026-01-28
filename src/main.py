@@ -31,7 +31,9 @@ from src.audio_service import (
 )
 from src.config_manager import ConfigManager
 from src.session_manager import SessionManager, SessionNotFoundError
-from src.models import Summary, SummaryStatus
+from src.models import Summary, SummaryStatus, ChatMessage, MessageRole, MessageType
+from src.transcription_service import TranscriptionService
+from src.chat_service import ChatService, ChatCLIError, ChatTimeoutError
 
 # 配置日志
 logging.basicConfig(
@@ -50,6 +52,8 @@ app = FastAPI(
 # 初始化服务
 config_manager = ConfigManager()
 session_manager = SessionManager()
+transcription_service = TranscriptionService(config_manager)
+chat_service = ChatService(config_manager)
 
 # 临时文件存储目录
 TEMP_UPLOAD_DIR = tempfile.mkdtemp(prefix="meeting_summary_")
@@ -85,6 +89,30 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 
+class ChatRequest(BaseModel):
+    """对话请求模型"""
+    session_id: str
+    message: str
+    type: str = "question"  # question 或 edit_request
+
+
+class ChatResponse(BaseModel):
+    """对话响应模型"""
+    response: str
+    updated_summary: Optional[SummaryResponse] = None
+
+
+class FinalizeRequest(BaseModel):
+    """确认生成请求模型"""
+    session_id: str
+
+
+class FinalizeResponse(BaseModel):
+    """确认生成响应模型"""
+    summary: SummaryResponse
+    download_url: str
+
+
 # ============== 错误代码 ==============
 
 class ErrorCode:
@@ -93,6 +121,8 @@ class ErrorCode:
     FILE_SIZE_ERROR = "FILE_SIZE_ERROR"
     FILE_UPLOAD_ERROR = "FILE_UPLOAD_ERROR"
     SESSION_NOT_FOUND = "SESSION_NOT_FOUND"
+    CHAT_SERVICE_ERROR = "CHAT_SERVICE_ERROR"
+    CHAT_TIMEOUT_ERROR = "CHAT_TIMEOUT_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
@@ -323,17 +353,331 @@ async def health_check():
     """
     健康检查端点。
     
-    返回系统状态和版本信息。
-    Whisper 服务状态检查将在后续任务中实现。
+    返回系统状态、Whisper 服务状态和版本信息。
     
     Returns:
-        健康状态信息
+        健康状态信息，包含：
+        - status: 系统整体状态 (healthy/degraded)
+        - whisper_service: Whisper 服务状态 (available/unavailable)
+        - version: 系统版本号
+    
+    Validates: Requirements 8.1, 8.2, 8.3
     """
+    # 检查 Whisper 服务状态
+    whisper_healthy = await transcription_service.check_health()
+    whisper_status = "available" if whisper_healthy else "unavailable"
+    
+    # 系统整体状态：如果 Whisper 不可用，系统处于降级状态
+    system_status = "healthy" if whisper_healthy else "degraded"
+    
+    logger.info(f"健康检查: system={system_status}, whisper={whisper_status}")
+    
     return {
-        "status": "healthy",
-        "whisper_service": "unknown",  # 将在任务 5.2 中实现
+        "status": system_status,
+        "whisper_service": whisper_status,
         "version": "1.0.0"
     }
+
+
+@app.post(
+    "/api/chat",
+    response_model=ChatResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "请求参数错误"},
+        404: {"model": ErrorResponse, "description": "会话不存在"},
+        500: {"model": ErrorResponse, "description": "服务器内部错误"}
+    },
+    summary="对话",
+    description="与 AI 进行对话，支持问答和编辑请求"
+)
+async def chat(request: ChatRequest):
+    """
+    对话端点。
+    
+    处理用户的问题或编辑请求，返回 AI 回复。
+    如果是编辑请求，还会返回更新后的总结。
+    
+    Args:
+        request: 对话请求，包含 session_id、message 和 type
+    
+    Returns:
+        ChatResponse: 包含 AI 回复和可选的更新后总结
+    
+    Raises:
+        HTTPException: 会话不存在 (404)、服务错误 (500)
+    
+    Validates: Requirements 5.2, 5.3, 6.2, 6.3, 6.4
+    """
+    logger.info(
+        f"收到对话请求: session_id={request.session_id}, "
+        f"type={request.type}, message={request.message[:50]}..."
+        if len(request.message) > 50 
+        else f"收到对话请求: session_id={request.session_id}, type={request.type}, message={request.message}"
+    )
+    
+    # 1. 验证消息类型
+    valid_types = {MessageType.QUESTION, MessageType.EDIT_REQUEST}
+    if request.type not in valid_types:
+        logger.warning(f"无效的消息类型: {request.type}")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": ErrorCode.INTERNAL_ERROR,
+                    "message": f"无效的消息类型，必须是 'question' 或 'edit_request'",
+                    "retry_allowed": True
+                }
+            }
+        )
+    
+    # 2. 获取会话
+    try:
+        session = session_manager.get_session(request.session_id)
+    except SessionNotFoundError:
+        logger.warning(f"会话不存在: {request.session_id}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": ErrorCode.SESSION_NOT_FOUND,
+                    "message": "会话已过期，请重新上传文件",
+                    "retry_allowed": False
+                }
+            }
+        )
+    
+    # 3. 构建对话历史
+    history = [
+        {"role": msg.role, "content": msg.content}
+        for msg in session.chat_history
+    ]
+    
+    # 4. 调用对话服务
+    try:
+        response_text = await chat_service.chat(
+            transcription=session.transcription,
+            summary=session.summary.content,
+            message=request.message,
+            history=history,
+            message_type=request.type
+        )
+    except ChatTimeoutError as e:
+        logger.error(f"对话超时: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": ErrorCode.CHAT_TIMEOUT_ERROR,
+                    "message": "AI 服务响应超时，请稍后重试",
+                    "retry_allowed": True
+                }
+            }
+        )
+    except ChatCLIError as e:
+        logger.error(f"对话服务错误: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": ErrorCode.CHAT_SERVICE_ERROR,
+                    "message": "AI 服务暂时不可用，请稍后重试",
+                    "details": str(e),
+                    "retry_allowed": True
+                }
+            }
+        )
+    except Exception as e:
+        logger.error(f"对话失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": ErrorCode.INTERNAL_ERROR,
+                    "message": "对话处理失败，请重试",
+                    "details": str(e),
+                    "retry_allowed": True
+                }
+            }
+        )
+    
+    # 5. 保存用户消息到历史
+    user_message = ChatMessage(
+        role=MessageRole.USER,
+        content=request.message,
+        message_type=request.type
+    )
+    session.add_message(user_message)
+    
+    # 6. 保存 AI 回复到历史
+    ai_message = ChatMessage(
+        role=MessageRole.ASSISTANT,
+        content=response_text,
+        message_type=MessageType.RESPONSE
+    )
+    session.add_message(ai_message)
+    
+    # 7. 如果是编辑请求，更新总结
+    updated_summary = None
+    if request.type == MessageType.EDIT_REQUEST:
+        try:
+            session.update_summary_content(response_text)
+            updated_summary = SummaryResponse(
+                content=session.summary.content,
+                status=session.summary.status,
+                version=session.summary.version
+            )
+            logger.info(f"总结已更新: version={session.summary.version}")
+        except ValueError as e:
+            logger.warning(f"无法更新总结: {e}")
+            # 如果总结已经是最终版本，不更新但不报错
+    
+    # 8. 更新会话
+    session_manager.update_session(request.session_id, {})
+    
+    logger.info(f"对话完成: session_id={request.session_id}")
+    
+    return ChatResponse(
+        response=response_text,
+        updated_summary=updated_summary
+    )
+
+
+@app.post(
+    "/api/finalize",
+    response_model=FinalizeResponse,
+    responses={
+        404: {"model": ErrorResponse, "description": "会话不存在"},
+        400: {"model": ErrorResponse, "description": "总结已经是最终版本"},
+        500: {"model": ErrorResponse, "description": "服务器内部错误"}
+    },
+    summary="确认生成",
+    description="确认生成最终版本的总结"
+)
+async def finalize(request: FinalizeRequest):
+    """
+    确认生成端点。
+    
+    将总结状态从草稿变更为最终版本。
+    
+    Args:
+        request: 确认请求，包含 session_id
+    
+    Returns:
+        FinalizeResponse: 包含最终版本总结和下载链接
+    
+    Raises:
+        HTTPException: 会话不存在 (404)、已是最终版本 (400)
+    
+    Validates: Requirements 6.5, 6.6
+    """
+    logger.info(f"收到确认生成请求: session_id={request.session_id}")
+    
+    # 1. 获取会话
+    try:
+        session = session_manager.get_session(request.session_id)
+    except SessionNotFoundError:
+        logger.warning(f"会话不存在: {request.session_id}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": ErrorCode.SESSION_NOT_FOUND,
+                    "message": "会话已过期，请重新上传文件",
+                    "retry_allowed": False
+                }
+            }
+        )
+    
+    # 2. 确认生成
+    try:
+        session.finalize_summary()
+        logger.info(f"总结已确认: session_id={request.session_id}")
+    except ValueError as e:
+        logger.warning(f"无法确认总结: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": ErrorCode.INTERNAL_ERROR,
+                    "message": "总结已经是最终版本",
+                    "retry_allowed": False
+                }
+            }
+        )
+    
+    # 3. 更新会话
+    session_manager.update_session(request.session_id, {})
+    
+    # 4. 返回响应
+    return FinalizeResponse(
+        summary=SummaryResponse(
+            content=session.summary.content,
+            status=session.summary.status,
+            version=session.summary.version
+        ),
+        download_url=f"/api/download/{request.session_id}"
+    )
+
+
+@app.get(
+    "/api/download/{session_id}",
+    summary="下载总结",
+    description="下载 Markdown 格式的会议总结"
+)
+async def download(session_id: str):
+    """
+    下载端点。
+    
+    返回 Markdown 格式的会议总结文件。
+    
+    Args:
+        session_id: 会话 ID
+    
+    Returns:
+        Markdown 文件下载响应
+    
+    Raises:
+        HTTPException: 会话不存在 (404)
+    
+    Validates: Requirements 4.3
+    """
+    from fastapi.responses import Response
+    
+    logger.info(f"收到下载请求: session_id={session_id}")
+    
+    # 1. 获取会话
+    try:
+        session = session_manager.get_session(session_id)
+    except SessionNotFoundError:
+        logger.warning(f"会话不存在: {session_id}")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": ErrorCode.SESSION_NOT_FOUND,
+                    "message": "会话已过期，请重新上传文件",
+                    "retry_allowed": False
+                }
+            }
+        )
+    
+    # 2. 生成文件名
+    # 使用原始音频文件名（去掉扩展名）+ _summary.md
+    base_name = os.path.splitext(session.audio_filename)[0]
+    filename = f"{base_name}_summary.md"
+    
+    # 3. 返回 Markdown 文件
+    content = session.summary.content
+    
+    logger.info(f"下载完成: session_id={session_id}, filename={filename}")
+    
+    return Response(
+        content=content.encode("utf-8"),
+        media_type="text/markdown",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
 
 
 # ============== 应用启动 ==============

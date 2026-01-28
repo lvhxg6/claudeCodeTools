@@ -204,36 +204,35 @@ class ConfigManager:
             self.DEFAULT_CONFIG["whisper"]["url"]
         )
     
-    def get_claude_command(self) -> list[str]:
+    def get_claude_command(self) -> str:
         """
         获取 Claude CLI 命令。
         
-        返回 Claude CLI 命令作为列表，支持带参数的命令。
-        例如 "claude --url xxx" 会被解析为 ["claude", "--url", "xxx"]
+        返回 Claude CLI 命令字符串。
         
         Returns:
-            Claude CLI 命令列表
+            Claude CLI 命令字符串
         
         Example:
             >>> config = ConfigManager()
             >>> cmd = config.get_claude_command()
-            >>> print(cmd)  # ["claude"]
+            >>> print(cmd)  # "claude"
         """
         command = self._config.get("claude", {}).get(
             "command",
             self.DEFAULT_CONFIG["claude"]["command"]
         )
         
-        # 如果已经是列表，直接返回
+        # 如果是列表，合并为字符串
         if isinstance(command, list):
+            return " ".join(command)
+        
+        # 如果是字符串，直接返回
+        if isinstance(command, str):
             return command
         
-        # 如果是字符串，按空格分割
-        if isinstance(command, str):
-            return command.split()
-        
         # 其他情况返回默认值
-        return [self.DEFAULT_CONFIG["claude"]["command"]]
+        return self.DEFAULT_CONFIG["claude"]["command"]
     
     def get_whisper_timeout(self) -> int:
         """

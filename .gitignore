@@ -55,3 +55,4 @@ Thumbs.db
 
 # Uploaded files (runtime)
 uploads/
+.hypothesis/

@@ -1,0 +1,4 @@
+# file: /Users/liubu/hx/AI-SystemService/claudeCodeTools/src/config_manager.py
+# hypothesis_version: 6.148.8
+
+[100, 120, 300, 8000, '.', '0.0.0.0', 'Claude command 配置无效', 'Whisper URL 配置无效', 'claude', 'command', 'config.yaml', 'host', 'language', 'port', 'prompt_template', 'r', 'server', 'summary', 'timeout', 'upload_max_size', 'url', 'utf-8', 'whisper', 'zh']

@@ -19,7 +19,7 @@
     - 实现 `get_whisper_url()` 和 `get_claude_command()` 方法
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
   
-  - [~] 1.3 编写 ConfigManager 属性测试
+  - [x] 1.3 编写 ConfigManager 属性测试
     - **Property 9: 配置加载正确性**
     - **Property 10: 默认配置回退**
     - **Validates: Requirements 7.1, 7.2, 7.4**

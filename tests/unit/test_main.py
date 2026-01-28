@@ -121,12 +121,18 @@ class TestUploadEndpoint:
     
     # ============== 成功场景测试 ==============
     
-    def test_upload_mp3_file_success(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_upload_mp3_file_success(self, mock_summary, mock_transcribe):
         """
         测试上传 MP3 文件成功
         
         Validates: Requirements 1.2, 1.4, 1.5
         """
+        # 设置 mock 返回值
+        mock_transcribe.return_value = "这是转写的会议内容"
+        mock_summary.return_value = "# 会议总结\n\n这是总结内容"
+        
         # 创建模拟的 MP3 文件
         file_content = b"fake mp3 content for testing"
         files = {"file": ("meeting.mp3", io.BytesIO(file_content), "audio/mpeg")}
@@ -147,13 +153,22 @@ class TestUploadEndpoint:
         # 验证 summary 结构
         assert data["summary"]["status"] == "draft"
         assert data["summary"]["version"] == 1
+        
+        # 验证转写和总结内容
+        assert data["transcription"] == "这是转写的会议内容"
+        assert data["summary"]["content"] == "# 会议总结\n\n这是总结内容"
     
-    def test_upload_wav_file_success(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_upload_wav_file_success(self, mock_summary, mock_transcribe):
         """
         测试上传 WAV 文件成功
         
         Validates: Requirements 1.2
         """
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"fake wav content"
         files = {"file": ("recording.wav", io.BytesIO(file_content), "audio/wav")}
         
@@ -163,12 +178,17 @@ class TestUploadEndpoint:
         data = response.json()
         assert "session_id" in data
     
-    def test_upload_m4a_file_success(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_upload_m4a_file_success(self, mock_summary, mock_transcribe):
         """
         测试上传 M4A 文件成功
         
         Validates: Requirements 1.2
         """
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"fake m4a content"
         files = {"file": ("audio.m4a", io.BytesIO(file_content), "audio/mp4")}
         
@@ -178,12 +198,17 @@ class TestUploadEndpoint:
         data = response.json()
         assert "session_id" in data
     
-    def test_upload_with_uppercase_extension(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_upload_with_uppercase_extension(self, mock_summary, mock_transcribe):
         """
         测试上传大写扩展名的文件成功
         
         Validates: Requirements 1.2
         """
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"fake content"
         files = {"file": ("meeting.MP3", io.BytesIO(file_content), "audio/mpeg")}
         
@@ -191,12 +216,17 @@ class TestUploadEndpoint:
         
         assert response.status_code == 200
     
-    def test_upload_with_mixed_case_extension(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_upload_with_mixed_case_extension(self, mock_summary, mock_transcribe):
         """
         测试上传混合大小写扩展名的文件成功
         
         Validates: Requirements 1.2
         """
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"fake content"
         files = {"file": ("meeting.Mp3", io.BytesIO(file_content), "audio/mpeg")}
         
@@ -204,8 +234,13 @@ class TestUploadEndpoint:
         
         assert response.status_code == 200
     
-    def test_upload_with_language_parameter(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_upload_with_language_parameter(self, mock_summary, mock_transcribe):
         """测试上传时指定语言参数"""
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"fake content"
         files = {"file": ("meeting.mp3", io.BytesIO(file_content), "audio/mpeg")}
         data = {"language": "en"}
@@ -214,12 +249,17 @@ class TestUploadEndpoint:
         
         assert response.status_code == 200
     
-    def test_upload_creates_session(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_upload_creates_session(self, mock_summary, mock_transcribe):
         """
         测试上传文件后创建会话
         
         Validates: Requirements 1.5
         """
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         initial_count = session_manager.get_session_count()
         
         file_content = b"fake content"
@@ -326,8 +366,13 @@ class TestUploadEndpoint:
     
     # ============== 边界条件测试 ==============
     
-    def test_upload_file_with_special_characters_in_name(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_upload_file_with_special_characters_in_name(self, mock_summary, mock_transcribe):
         """测试上传文件名包含特殊字符"""
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"content"
         files = {"file": ("会议录音 (2024).mp3", io.BytesIO(file_content), "audio/mpeg")}
         
@@ -335,8 +380,13 @@ class TestUploadEndpoint:
         
         assert response.status_code == 200
     
-    def test_upload_file_with_path_in_name(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_upload_file_with_path_in_name(self, mock_summary, mock_transcribe):
         """测试上传文件名包含路径（应该被清理）"""
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"content"
         files = {"file": ("../../../etc/passwd.mp3", io.BytesIO(file_content), "audio/mpeg")}
         
@@ -345,8 +395,13 @@ class TestUploadEndpoint:
         # 应该成功，因为路径会被清理
         assert response.status_code == 200
     
-    def test_multiple_uploads_create_different_sessions(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_multiple_uploads_create_different_sessions(self, mock_summary, mock_transcribe):
         """测试多次上传创建不同的会话"""
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"content"
         
         # 第一次上传
@@ -373,8 +428,13 @@ class TestUploadResponseFormat:
         """每个测试前清理会话"""
         session_manager.clear_all_sessions()
     
-    def test_response_contains_required_fields(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_response_contains_required_fields(self, mock_summary, mock_transcribe):
         """测试响应包含所有必需字段"""
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"content"
         files = {"file": ("meeting.mp3", io.BytesIO(file_content), "audio/mpeg")}
         
@@ -394,8 +454,13 @@ class TestUploadResponseFormat:
         assert "status" in summary
         assert "version" in summary
     
-    def test_response_summary_is_draft(self):
+    @patch('src.main.transcription_service.transcribe', new_callable=AsyncMock)
+    @patch('src.main.summary_service.generate_summary', new_callable=AsyncMock)
+    def test_response_summary_is_draft(self, mock_summary, mock_transcribe):
         """测试响应中的总结状态为草稿"""
+        mock_transcribe.return_value = "转写内容"
+        mock_summary.return_value = "总结内容"
+        
         file_content = b"content"
         files = {"file": ("meeting.mp3", io.BytesIO(file_content), "audio/mpeg")}
         

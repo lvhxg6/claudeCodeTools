@@ -33,7 +33,18 @@ from src.audio_service import (
 from src.config_manager import ConfigManager
 from src.session_manager import SessionManager, SessionNotFoundError
 from src.models import Summary, SummaryStatus, ChatMessage, MessageRole, MessageType
-from src.transcription_service import TranscriptionService
+from src.transcription_service import (
+    TranscriptionService,
+    TranscriptionError,
+    WhisperServiceError,
+    TranscriptionTimeoutError,
+)
+from src.summary_service import (
+    SummaryService,
+    SummaryError,
+    ClaudeCLIError,
+    SummaryTimeoutError,
+)
 from src.chat_service import ChatService, ChatCLIError, ChatTimeoutError
 
 # 配置日志
@@ -59,6 +70,7 @@ if os.path.exists(STATIC_DIR):
 config_manager = ConfigManager()
 session_manager = SessionManager()
 transcription_service = TranscriptionService(config_manager)
+summary_service = SummaryService(config_manager)
 chat_service = ChatService(config_manager)
 
 # 临时文件存储目录
@@ -343,15 +355,105 @@ async def upload_audio(
             }
         )
     
-    # 5. 返回响应 (Requirements 1.4, 1.5)
-    # 注意：由于转写服务和总结服务尚未实现，暂时返回占位符
-    logger.info(f"文件上传成功: session_id={session_id}")
+    # 5. 调用 Whisper 转写服务 (Requirements 2.1, 2.2)
+    try:
+        logger.info(f"开始转写音频: session_id={session_id}")
+        transcription = await transcription_service.transcribe(
+            audio_file=file_content,
+            filename=file.filename,
+            language=language
+        )
+        logger.info(f"转写完成: session_id={session_id}, 长度={len(transcription)}")
+    except WhisperServiceError as e:
+        logger.error(f"Whisper 服务错误: {e}")
+        # 清理会话
+        try:
+            session_manager.delete_session(session_id)
+        except:
+            pass
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": ErrorCode.INTERNAL_ERROR,
+                    "message": "语音转写服务暂时不可用，请稍后重试",
+                    "details": str(e),
+                    "retry_allowed": True
+                }
+            }
+        )
+    except TranscriptionTimeoutError as e:
+        logger.error(f"转写超时: {e}")
+        try:
+            session_manager.delete_session(session_id)
+        except:
+            pass
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": ErrorCode.INTERNAL_ERROR,
+                    "message": "语音转写超时，请稍后重试",
+                    "details": str(e),
+                    "retry_allowed": True
+                }
+            }
+        )
+    except TranscriptionError as e:
+        logger.error(f"转写错误: {e}")
+        try:
+            session_manager.delete_session(session_id)
+        except:
+            pass
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": ErrorCode.INTERNAL_ERROR,
+                    "message": "语音转写失败，请重试",
+                    "details": str(e),
+                    "retry_allowed": True
+                }
+            }
+        )
+    
+    # 6. 调用 Claude 总结服务 (Requirements 3.1, 3.2, 3.3, 3.4, 3.5)
+    try:
+        logger.info(f"开始生成总结: session_id={session_id}")
+        summary_content = await summary_service.generate_summary(transcription)
+        logger.info(f"总结生成完成: session_id={session_id}, 长度={len(summary_content)}")
+    except ClaudeCLIError as e:
+        logger.error(f"Claude CLI 错误: {e}")
+        # 即使总结失败，也保留转写结果
+        summary_content = ""
+        logger.warning(f"总结生成失败，但保留转写结果: session_id={session_id}")
+    except SummaryTimeoutError as e:
+        logger.error(f"总结超时: {e}")
+        summary_content = ""
+        logger.warning(f"总结超时，但保留转写结果: session_id={session_id}")
+    except SummaryError as e:
+        logger.error(f"总结错误: {e}")
+        summary_content = ""
+        logger.warning(f"总结失败，但保留转写结果: session_id={session_id}")
+    
+    # 7. 更新会话，保存转写和总结结果
+    try:
+        session = session_manager.get_session(session_id)
+        session.transcription = transcription
+        session.summary.content = summary_content
+        session_manager.update_session(session_id, {})
+        logger.info(f"会话已更新: session_id={session_id}")
+    except Exception as e:
+        logger.error(f"更新会话失败: {e}")
+    
+    # 8. 返回响应 (Requirements 1.4, 1.5)
+    logger.info(f"文件上传处理完成: session_id={session_id}")
     
     return UploadResponse(
         session_id=session_id,
-        transcription="",  # 转写服务尚未实现，暂时为空
+        transcription=transcription,
         summary=SummaryResponse(
-            content="",  # 总结服务尚未实现，暂时为空
+            content=summary_content,
             status=SummaryStatus.DRAFT,
             version=1
         )

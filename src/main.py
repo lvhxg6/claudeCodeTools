@@ -21,7 +21,8 @@ import tempfile
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.audio_service import (
@@ -48,6 +49,11 @@ app = FastAPI(
     description="将会议录音自动转写为文字，并通过 AI 智能分析生成结构化的会议总结报告",
     version="1.0.0"
 )
+
+# 配置静态文件服务
+STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # 初始化服务
 config_manager = ConfigManager()
@@ -165,6 +171,14 @@ def save_temp_file(file_content: bytes, filename: str) -> str:
 
 
 # ============== API 端点 ==============
+
+@app.get("/", include_in_schema=False)
+async def root():
+    """
+    首页重定向到静态页面。
+    """
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
 
 @app.post(
     "/api/upload",

@@ -85,9 +85,16 @@ async function checkServiceHealth() {
     
     try {
         const response = await fetch('/api/health');
+        
+        if (!response.ok) {
+            statusDot.className = 'status-dot offline';
+            statusText.textContent = '服务连接失败';
+            return;
+        }
+        
         const data = await response.json();
         
-        if (data.status === 'healthy' && data.whisper_service === 'available') {
+        if (data.whisper_service === 'available') {
             statusDot.className = 'status-dot';
             statusText.textContent = 'Whisper 服务可用';
         } else {
@@ -95,6 +102,7 @@ async function checkServiceHealth() {
             statusText.textContent = 'Whisper 服务不可用';
         }
     } catch (error) {
+        console.error('健康检查失败:', error);
         statusDot.className = 'status-dot offline';
         statusText.textContent = '服务连接失败';
     }

@@ -4,13 +4,13 @@
 # Whisper 语音转文字服务配置
 whisper:
   url: "http://localhost:8765"  # Whisper 服务地址
-  timeout: 300  # 请求超时时间（秒）
+  timeout: 3000  # 请求超时时间（秒）
   language: "zh"  # 默认语言
 
 # Claude CLI 配置
 claude:
-  command: "claude"  # Claude CLI 命令，支持自定义命令如 "claude --url xxx"
-  timeout: 120  # 请求超时时间（秒）
+  command: "cw"  # Claude CLI 命令，支持自定义命令如 "claude --url xxx"
+  timeout: 1200  # 请求超时时间（秒）
 
 # 服务器配置
 server:

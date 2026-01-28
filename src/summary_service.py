@@ -189,22 +189,23 @@ class SummaryService:
         timeout = self.config.get_claude_timeout()
         
         # 构建完整命令
-        # Claude CLI 通常接受 -p 参数传递 prompt
-        full_command = f'{command} -p {shlex.quote(prompt)}'
+        # Claude CLI 使用 -p 参数进行非交互式输出，从 stdin 读取 prompt
+        full_command = f'{command} -p'
         
         logger.info(f"执行 Claude CLI 命令，prompt 长度: {len(prompt)} 字符")
         
         try:
-            # 创建子进程
+            # 创建子进程，通过 stdin 传递 prompt
             process = await asyncio.create_subprocess_shell(
                 full_command,
+                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
             
-            # 等待完成，带超时
+            # 通过 stdin 发送 prompt，等待完成，带超时
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
+                process.communicate(input=prompt.encode('utf-8')),
                 timeout=timeout
             )
             

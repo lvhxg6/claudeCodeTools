@@ -54,7 +54,7 @@
     - **Property 1: 文件格式验证**
     - **Validates: Requirements 1.2**
   
-  - [ ] 4.3 实现文件上传 API 端点
+  - [x] 4.3 实现文件上传 API 端点
     - 实现 `POST /api/upload` 端点
     - 实现文件大小限制检查
     - 实现文件临时存储

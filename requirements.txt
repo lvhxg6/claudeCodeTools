@@ -1,0 +1,28 @@
+# 会议录音智能总结系统依赖
+
+# Web 框架
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# 配置管理
+pyyaml>=6.0.1
+
+# HTTP 客户端
+httpx>=0.25.0
+
+# 文件上传支持
+python-multipart>=0.0.6
+
+# 数据验证
+pydantic>=2.5.0
+
+# 异步支持
+aiofiles>=23.2.1
+
+# 测试框架
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+hypothesis>=6.92.0
+
+# 开发工具
+python-dotenv>=1.0.0

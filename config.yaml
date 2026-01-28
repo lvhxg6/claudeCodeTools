@@ -1,0 +1,34 @@
+# 会议录音智能总结系统配置文件
+# Meeting Summary System Configuration
+
+# Whisper 语音转文字服务配置
+whisper:
+  url: "http://localhost:8765"  # Whisper 服务地址
+  timeout: 300  # 请求超时时间（秒）
+  language: "zh"  # 默认语言
+
+# Claude CLI 配置
+claude:
+  command: "claude"  # Claude CLI 命令，支持自定义命令如 "claude --url xxx"
+  timeout: 120  # 请求超时时间（秒）
+
+# 服务器配置
+server:
+  host: "0.0.0.0"  # 监听地址
+  port: 8000  # 监听端口
+  upload_max_size: 100  # 上传文件大小限制（MB）
+
+# 总结配置
+summary:
+  prompt_template: |
+    请对以下会议转写内容进行智能总结：
+    
+    要求：
+    1. 剔除废话和闲聊内容
+    2. 提取会议结论性内容
+    3. 保留支撑结论的关键论据和沟通要点
+    4. 输出业务导向的总结报告
+    5. 使用 Markdown 格式
+    
+    转写内容：
+    {transcription}

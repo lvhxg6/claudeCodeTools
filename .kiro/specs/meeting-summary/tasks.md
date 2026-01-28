@@ -6,7 +6,7 @@
 
 ## 任务列表
 
-- [ ] 1. 项目初始化与基础架构
+- [x] 1. 项目初始化与基础架构
   - [x] 1.1 创建项目目录结构和基础文件
     - 创建 `src/`、`tests/`、`static/` 目录
     - 创建 `requirements.txt` 依赖文件
@@ -25,12 +25,12 @@
     - **Validates: Requirements 7.1, 7.2, 7.4**
 
 - [ ] 2. 数据模型与会话管理
-  - [ ] 2.1 实现数据模型类
+  - [x] 2.1 实现数据模型类
     - 实现 `Session`、`Summary`、`ChatMessage` 数据类
     - 实现数据序列化和反序列化方法
     - _Requirements: 5.4, 6.1, 6.7_
   
-  - [ ] 2.2 实现 SessionManager 会话管理器
+  - [x] 2.2 实现 SessionManager 会话管理器
     - 实现 `create_session()`、`get_session()`、`update_session()`、`delete_session()` 方法
     - 实现会话内存存储
     - _Requirements: 5.4, 5.5_

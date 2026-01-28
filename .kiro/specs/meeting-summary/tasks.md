@@ -7,13 +7,13 @@
 ## 任务列表
 
 - [ ] 1. 项目初始化与基础架构
-  - [-] 1.1 创建项目目录结构和基础文件
+  - [x] 1.1 创建项目目录结构和基础文件
     - 创建 `src/`、`tests/`、`static/` 目录
     - 创建 `requirements.txt` 依赖文件
     - 创建 `config.yaml` 配置文件模板
     - _Requirements: 7.1, 7.2_
   
-  - [~] 1.2 实现 ConfigManager 配置管理器
+  - [x] 1.2 实现 ConfigManager 配置管理器
     - 实现 YAML 配置文件加载
     - 实现默认配置回退逻辑
     - 实现 `get_whisper_url()` 和 `get_claude_command()` 方法

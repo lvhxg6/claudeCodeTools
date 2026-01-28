@@ -44,7 +44,7 @@
 - [x] 3. 检查点 - 基础架构验证
   - 确保所有测试通过，如有问题请询问用户
 
-- [ ] 4. 文件上传与验证服务
+- [x] 4. 文件上传与验证服务
   - [x] 4.1 实现文件格式验证函数
     - 实现 `validate_audio_format()` 函数
     - 支持 mp3、wav、m4a 格式验证
@@ -61,7 +61,7 @@
     - _Requirements: 1.2, 1.3, 1.4, 1.5_
 
 - [ ] 5. 转写服务集成
-  - [ ] 5.1 实现 TranscriptionService 转写服务
+  - [x] 5.1 实现 TranscriptionService 转写服务
     - 实现 `transcribe()` 方法调用 Whisper API
     - 实现 `check_health()` 健康检查方法
     - 使用 OpenAI 兼容的 `/v1/audio/transcriptions` 接口
